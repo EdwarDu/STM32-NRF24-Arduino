@@ -1,0 +1,334 @@
+IO口定义：
+void GPIO_Configuration(void)
+{
+          GPIO_InitTypeDef GPIO_InitStructure;
+          /* 第1步：打开GPIO和USART部件的时钟 */
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+          RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+          /* 第2步：将USART Tx的GPIO配置为推挽复用模式 */
+          GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+          GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+          GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+          GPIO_Init(GPIOA, &GPIO_InitStructure);
+          /* 第3步：将USART Rx的GPIO配置为浮空输入模式
+          由于CPU复位后，GPIO缺省都是浮空输入模式，因此下面这个步骤不是必须的
+          但是，我还是建议加上便于阅读，并且防止其它地方修改了这个口线的设置参数
+          */
+          GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+          GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+          GPIO_Init(GPIOA, &GPIO_InitStructure);
+        /* 第1步：打开GPIO和USART2部件的时钟 */
+        //RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+        RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+        /* 第2步：将USART2 Tx的GPIO配置为推挽复用模式 */
+        GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+        GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+        GPIO_Init(GPIOA, &GPIO_InitStructure);
+        /* 第3步：将USART2 Rx的GPIO配置为浮空输入模式
+                由于CPU复位后，GPIO缺省都是浮空输入模式，因此下面这个步骤不是必须的
+                但是，我还是建议加上便于阅读，并且防止其它地方修改了这个口线的设置参数
+        */
+        GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+        GPIO_Init(GPIOA, &GPIO_InitStructure);
+        /*  第3步已经做了，因此这步可以不做
+                GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+        */
+        GPIO_Init(GPIOA, &GPIO_InitStructure);
+}
+串口初始化：
+void USART_Configuration(void)
+{
+        USART_InitTypeDef USART_InitStructure;
+          /* 第4步：配置USART参数
+          - BaudRate = 115200 baud
+          - Word Length = 8 Bits
+          - One Stop Bit
+          - No parity
+          - Hardware flow control disabled (RTS and CTS signals)
+          - Receive and transmit enabled
+          */
+          USART_InitStructure.USART_BaudRate = 19200;
+          USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+          USART_InitStructure.USART_StopBits = USART_StopBits_1;
+          USART_InitStructure.USART_Parity = USART_Parity_No;
+          USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+          USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+          USART_Init(USART1, &USART_InitStructure);
+          //空闲中断
+          USART_ITConfig(USART1, USART_IT_IDLE , ENABLE);
+        /* 第5步：使能 USART， 配置完毕 */
+          USART_Cmd(USART1, ENABLE);  
+        /* CPU的小缺陷：串口配置好，如果直接Send，则第1个字节发送不出去
+          如下语句解决第1个字节无法正确发送出去的问题 */
+          USART_ClearFlag(USART1, USART_FLAG_TC); /* 清发送外城标志，Transmission Complete flag */
+        USART_InitStructure.USART_BaudRate = 9600;
+        USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+        USART_InitStructure.USART_StopBits = USART_StopBits_1;
+        USART_InitStructure.USART_Parity = USART_Parity_No;
+        USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+        USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+          USART_Init(USART2, &USART_InitStructure);
+          USART_ITConfig(USART2, USART_IT_IDLE , ENABLE);//开启空闲,帧错,噪声,校验错中断 
+        USART_Cmd(USART2, ENABLE);
+        /* CPU的小缺陷：串口配置好，如果直接Send，则第1个字节发送不出去
+          如下语句解决第1个字节无法正确发送出去的问题 */
+          USART_ClearFlag(USART2, USART_FLAG_TC); /* 清发送外城标志，Transmission Complete flag */
+}
+DMA配置：
+void DMA_Configuration(void)
+{
+  DMA_InitTypeDef DMA_InitStructure;
+  /* DMA clock enable */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);//DMA1
+  /* DMA1 Channel4 (triggered by USART1 Tx event) Config */
+  DMA_DeInit(DMA1_Channel4);  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40013804;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)USART1_SEND_DATA;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+  DMA_InitStructure.DMA_BufferSize = 512;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel4, &DMA_InitStructure);
+  DMA_ITConfig(DMA1_Channel4, DMA_IT_TC, ENABLE);
+  DMA_ITConfig(DMA1_Channel4, DMA_IT_TE, ENABLE);
+  /* Enable USART1 DMA TX request */
+  USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE);
+  DMA_Cmd(DMA1_Channel4, DISABLE);
+  /* DMA1 Channel5 (triggered by USART2 Tx event) Config */
+  DMA_DeInit(DMA1_Channel7);  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40004404;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)USART2_SEND_DATA;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+  DMA_InitStructure.DMA_BufferSize = 512;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel7, &DMA_InitStructure);
+  DMA_ITConfig(DMA1_Channel7, DMA_IT_TC, ENABLE);
+  DMA_ITConfig(DMA1_Channel7, DMA_IT_TE, ENABLE);
+  /* Enable USART1 DMA TX request */
+  USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
+  DMA_Cmd(DMA1_Channel7, DISABLE);
+  /* DMA1 Channel5 (triggered by USART1 Rx event) Config */
+  DMA_DeInit(DMA1_Channel5);  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40013804;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)USART1_RECEIVE_DATA;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+  DMA_InitStructure.DMA_BufferSize = 512;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel5, &DMA_InitStructure);
+  DMA_ITConfig(DMA1_Channel5, DMA_IT_TC, ENABLE);
+  DMA_ITConfig(DMA1_Channel5, DMA_IT_TE, ENABLE);
+  
+  /* Enable USART1 DMA RX request */
+  USART_DMACmd(USART1, USART_DMAReq_Rx, ENABLE);
+  DMA_Cmd(DMA1_Channel5, ENABLE);
+  /* DMA1 Channel6 (triggered by USART1 Rx event) Config */
+  DMA_DeInit(DMA1_Channel6);  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40004404;
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)USART2_RECEIVE_DATA;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+  DMA_InitStructure.DMA_BufferSize = 512;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+  DMA_Init(DMA1_Channel6, &DMA_InitStructure);
+  DMA_ITConfig(DMA1_Channel6, DMA_IT_TC, ENABLE);
+  DMA_ITConfig(DMA1_Channel6, DMA_IT_TE, ENABLE);
+  /* Enable USART2 DMA RX request */
+  USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
+  DMA_Cmd(DMA1_Channel6, ENABLE);
+}
+中断优先级配置：
+void NVIC_Configuration(void)
+{
+  NVIC_InitTypeDef NVIC_InitStructure;
+  /* Configure one bit for preemption priority */
+  NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);  
+  /* Enable the USART1 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /* Enable the USART2 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  //Enable DMA Channel4 Interrupt 
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel4_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  //Enable DMA Channel7 Interrupt 
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel7_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /*Enable DMA Channel5 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel5_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+  /*Enable DMA Channel6 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = DMA1_Channel6_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+}
+数组定义，含义如题名：
+u8 USART1_SEND_DATA[512];     
+u8 USART2_SEND_DATA[512]; 
+u8 USART1_RECEIVE_DATA[512]; 
+u8 USART2_RECEIVE_DATA[512]; 
+u8 USART1_TX_Finish=1;// USART1发送完成标志量
+u8 USART2_TX_Finish=1; // USART2发送完成标志量
+USART1中断服务函数
+void USART1_IRQHandler(void)
+{
+        u16 DATA_LEN;
+        u16 i;
+         if(USART_GetITStatus(USART1, USART_IT_IDLE) != RESET)//如果为空闲总线中断
+    {
+                DMA_Cmd(DMA1_Channel5, DISABLE);//关闭DMA,防止处理其间有数据
+                //USART_RX_STA = USART1->SR;//先读SR，然后读DR才能清除
+        //USART_RX_STA = USART1->DR;
+                  DATA_LEN=512-DMA_GetCurrDataCounter(DMA1_Channel5); 
+                if(DATA_LEN > 0)
+        {                        
+                        while(USART1_TX_Finish==0)//等待数据传输完成才下一次
+            {
+                ;
+            }
+                        //将数据送DMA存储地址
+            for(i=0;i<DATA_LEN;i++)
+            {
+                USART1_SEND_DATA[i]=USART1_RECEIVE_DATA[i];
+            }
+            //USART用DMA传输替代查询方式发送，克服被高优先级中断而产生丢帧现象。
+            DMA_Cmd(DMA1_Channel4, DISABLE); //改变datasize前先要禁止通道工作
+            DMA1_Channel4->CNDTR=DATA_LEN; //DMA1,传输数据量
+            USART1_TX_Finish=0;//DMA传输开始标志量
+            DMA_Cmd(DMA1_Channel4, ENABLE);                        
+                }
+                //DMA_Cmd(DMA1_Channel5, DISABLE);//关闭DMA,防止处理其间有数据
+                DMA_ClearFlag(DMA1_FLAG_GL5 | DMA1_FLAG_TC5 | DMA1_FLAG_TE5 | DMA1_FLAG_HT5);//清标志
+                DMA1_Channel5->CNDTR = 512;//重装填
+                DMA_Cmd(DMA1_Channel5, ENABLE);//处理完,重开DMA
+                //读SR后读DR清除Idle
+                i = USART1->SR;
+                i = USART1->DR;
+        }
+        if(USART_GetITStatus(USART1, USART_IT_PE | USART_IT_FE | USART_IT_NE) != RESET)//出错
+        {
+                USART_ClearITPendingBit(USART1, USART_IT_PE | USART_IT_FE | USART_IT_NE);
+        }
+          USART_ClearITPendingBit(USART1, USART_IT_TC);
+          USART_ClearITPendingBit(USART1, USART_IT_IDLE);
+}
+USART2中断服务函数
+void USART2_IRQHandler(void)
+{
+        u16 DATA_LEN;
+        u16 i;
+         if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET) //如果为空闲总线中断
+    {
+                DMA_Cmd(DMA1_Channel6, DISABLE);//关闭DMA,防止处理其间有数据
+                //USART_RX_STA = USART1->SR;//先读SR，然后读DR才能清除
+        //USART_RX_STA = USART1->DR;
+                  DATA_LEN=512-DMA_GetCurrDataCounter(DMA1_Channel6); 
+                if(DATA_LEN > 0)
+        {                        
+                        while(USART2_TX_Finish==0)//等待数据完成才下一次
+            {
+                ;
+            }
+                        //将数据送DMA存储地址
+            for(i=0;i<DATA_LEN;i++)
+            {
+                USART2_SEND_DATA[i]=USART2_RECEIVE_DATA[i];
+            }
+            //USART用DMA传输替代查询方式发送，克服被高优先级中断而产生丢帧现象。
+            DMA_Cmd(DMA1_Channel7, DISABLE); //改变datasize前先要禁止通道工作
+            DMA1_Channel7->CNDTR=DATA_LEN; //DMA1,传输数据量
+            USART2_TX_Finish=0;//DMA传输开始标志量
+            DMA_Cmd(DMA1_Channel7, ENABLE);                        
+                }
+                //DMA_Cmd(DMA1_Channel5, DISABLE);//关闭DMA,防止处理其间有数据
+                DMA_ClearFlag(DMA1_FLAG_GL6 | DMA1_FLAG_TC6 | DMA1_FLAG_TE6 | DMA1_FLAG_HT6);//清标志
+                DMA1_Channel6->CNDTR = 512;//重装填
+                DMA_Cmd(DMA1_Channel6, ENABLE);//处理完,重开DMA
+                //读SR后读DR清除Idle
+                i = USART2->SR;
+                i = USART2->DR;
+        }
+        if(USART_GetITStatus(USART2, USART_IT_PE | USART_IT_FE | USART_IT_NE) != RESET)//出错
+        {
+                USART_ClearITPendingBit(USART2, USART_IT_PE | USART_IT_FE | USART_IT_NE);
+        }
+          USART_ClearITPendingBit(USART2, USART_IT_TC);
+          USART_ClearITPendingBit(USART2, USART_IT_IDLE);
+}
+DMA1_Channel5中断服务函数
+void DMA1_Channel5_IRQHandler(void)
+{
+  DMA_ClearITPendingBit(DMA1_IT_TC5);
+  DMA_ClearITPendingBit(DMA1_IT_TE5);
+  DMA_Cmd(DMA1_Channel5, DISABLE);//关闭DMA,防止处理其间有数据
+  DMA1_Channel5->CNDTR = 580;//重装填
+  DMA_Cmd(DMA1_Channel5, ENABLE);//处理完,重开DMA
+}
+DMA1_Channel6中断服务函数
+void DMA1_Channel6_IRQHandler(void)
+{
+  DMA_ClearITPendingBit(DMA1_IT_TC6);
+  DMA_ClearITPendingBit(DMA1_IT_TE6);
+  DMA_Cmd(DMA1_Channel6, DISABLE);//关闭DMA,防止处理其间有数据
+  DMA1_Channel6->CNDTR = 580;//重装填
+  DMA_Cmd(DMA1_Channel6, ENABLE);//处理完,重开DMA
+}
+DMA1_Channel4中断服务函数
+//USART1使用DMA发数据中断服务程序
+void DMA1_Channel4_IRQHandler(void)
+{
+  DMA_ClearITPendingBit(DMA1_IT_TC4);
+  DMA_ClearITPendingBit(DMA1_IT_TE4);
+  DMA_Cmd(DMA1_Channel4, DISABLE);//关闭DMA
+  USART1_TX_Finish=1;//置DMA传输完成
+}
+DMA1_Channel7中断服务函数
+//USART2使用DMA发数据中断服务程序
+void DMA1_Channel7_IRQHandler(void)
+{
+  DMA_ClearITPendingBit(DMA1_IT_TC7);
+  DMA_ClearITPendingBit(DMA1_IT_TE7);
+  DMA_Cmd(DMA1_Channel7, DISABLE);//关闭DMA
+  USART2_TX_Finish=1;//置DMA传输完成
+}

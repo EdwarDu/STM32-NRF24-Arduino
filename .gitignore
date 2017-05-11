@@ -1,4 +1,7 @@
 # Object files
+Output/*.crf
+Output/*.d
+Output/*
 *.o
 *.ko
 *.obj
